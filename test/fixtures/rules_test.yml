@@ -1,0 +1,19 @@
+rules:
+  - name: "Test Secret"
+    pattern: 'test_secret_[a-zA-Z0-9]{16}'
+    keywords:
+      - "secret"
+    priority: "high"
+    min_length: 20
+
+  - name: "Test Token"
+    pattern: 'test_token_[a-zA-Z0-9]{20}'
+    keywords:
+      - "token"
+    priority: "high"
+    min_length: 25
+
+false_positives:
+  keywords:
+    - "example"
+  patterns: []
