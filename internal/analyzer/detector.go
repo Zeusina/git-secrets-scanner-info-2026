@@ -13,9 +13,9 @@ import (
 
 // SecretDetector scans content for secrets using configured rules.
 type SecretDetector struct {
-	cfg           *config.Config
-	compiledRules map[string]*CompiledDetectorRule
-	minKeywordLen int
+	cfg            *config.Config
+	compiledRules  map[string]*CompiledDetectorRule
+	falsePositives []*regexp.Regexp
 }
 
 // CompiledDetectorRule represents a rule with a compiled regex pattern.
@@ -33,7 +33,6 @@ func NewSecretDetector(cfg *config.Config) (*SecretDetector, error) {
 	sd := &SecretDetector{
 		cfg:           cfg,
 		compiledRules: make(map[string]*CompiledDetectorRule),
-		minKeywordLen: 3,
 	}
 
 	// Compile all regex patterns
@@ -47,6 +46,15 @@ func NewSecretDetector(cfg *config.Config) (*SecretDetector, error) {
 			Rule:  &cfg.Rules[i],
 			Regex: re,
 		}
+	}
+
+	// Pre-compile false positive patterns
+	for _, pattern := range cfg.FalsePositives.Patterns {
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compile false positive regex %q: %w", pattern, err)
+		}
+		sd.falsePositives = append(sd.falsePositives, re)
 	}
 
 	return sd, nil
@@ -157,8 +165,8 @@ func (sd *SecretDetector) shouldFilterOut(f Finding) bool {
 	}
 
 	// Check against false positive patterns
-	for _, pattern := range sd.cfg.FalsePositives.Patterns {
-		if matched, _ := regexp.MatchString(pattern, f.LineContent); matched {
+	for _, re := range sd.falsePositives {
+		if re.MatchString(f.LineContent) {
 			return true
 		}
 	}
