@@ -87,9 +87,15 @@ func (tr *TextReporter) GenerateReport(result *analyzer.ScanResult) (string, err
 		})
 
 		for idx, finding := range result.Findings {
+
+			commitHash := finding.CommitHash
+			if len(commitHash) > 8 { // Explicit check for hash len
+				commitHash = commitHash[:8]
+			}
+
 			sb.WriteString(fmt.Sprintf("\n[%d] %s\n", idx+1, finding.Type))
 			sb.WriteString(fmt.Sprintf("    File:       %s:%d\n", finding.FilePath, finding.LineNumber))
-			sb.WriteString(fmt.Sprintf("    Commit:     %s (%s)\n", finding.CommitHash[:8], finding.CommitAuthor))
+			sb.WriteString(fmt.Sprintf("    Commit:     %s (%s)\n", commitHash, finding.CommitAuthor))
 			sb.WriteString(fmt.Sprintf("    Message:    %s\n", strings.TrimSpace(finding.CommitMessage)))
 			sb.WriteString(fmt.Sprintf("    Severity:   %s\n", finding.Severity))
 			sb.WriteString(fmt.Sprintf("    Confidence: %d%%\n", finding.Confidence))
@@ -132,39 +138,45 @@ func (tr *TextReporter) maskLineContent(finding analyzer.Finding) string {
 
 	// Simple approach: replace the unmasked part with asterisks
 	// The MaskedValue shows first 2 and last 2 chars, so we can infer length
-	maskedLen := len(finding.MaskedValue)
-	if maskedLen > 4 {
-		// Count asterisks to determine original length
-		asterisks := 0
-		for _, c := range finding.MaskedValue {
-			if c == '*' {
-				asterisks++
-			}
-		}
-		// Original length is asterisks + 4 (2 at start, 2 at end)
-		originalLen := asterisks + 4
-
-		// Create a simple mask of the appropriate length
-		mask := strings.Repeat("*", originalLen)
-
-		// Try to find and replace long strings that might be the secret
-		// Look for patterns like quoted strings, key=value, url components
-		result := line
-
-		// Pattern 1: quoted strings longer than threshold
-		for i := 0; i < len(result)-originalLen; i++ {
-			if result[i] == '"' || result[i] == '\'' {
-				endQuote := strings.IndexByte(result[i+1:], result[i])
-				if endQuote > 0 && endQuote >= originalLen-2 {
-					quote := string(result[i])
-					result = result[:i+1] + mask + quote + result[i+1+endQuote+1:]
-					break
-				}
-			}
-		}
-
-		return result
+	masked := finding.MaskedValue
+	maskedLen := len(masked)
+	if maskedLen < 4 {
+		return "[REDACTED]" // Not enough indo to locate secret
 	}
 
+	// Get prefix and suffix to display them in report
+	prefix := masked[:2]
+	suffix := masked[maskedLen-2:]
+
+	for start := 0; start < len(line); {
+		idx := strings.Index(line[start:], prefix)
+
+		if idx == -1 {
+			break
+		}
+
+		secretStart := start + idx
+
+		searchFrom := secretStart + 2
+		if searchFrom >= len(line) {
+			break
+		}
+
+		rel := strings.Index(line[searchFrom:], suffix)
+		if rel == -1 {
+			break
+		}
+
+		secretEnd := searchFrom + rel + 2
+
+		// Ensure we have at least 4 chars in the candidate
+		if secretEnd-secretStart >= 4 {
+			// Replace secret in candidate with masking value
+			return line[:secretStart] + masked + line[:secretEnd]
+		}
+
+		start = secretStart + 1 // Move forward
+	}
+	// Fallback
 	return "[REDACTED]"
 }
