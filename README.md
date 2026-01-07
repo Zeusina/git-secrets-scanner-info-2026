@@ -119,6 +119,13 @@ false_positives:
     - "example_token"
   patterns:
     - '(demo|example|sample|test)'
+
+excludes:
+  - '.*_test\.go$'
+  - '^test/'
+  - '/fixtures/'
+  - '/testdata/'
+  - '/demo/'
 ```
 
 ### Rule Fields
@@ -135,6 +142,15 @@ Configure false positive filters to reduce noise:
 
 - **keywords**: Keywords that indicate a false positive
 - **patterns**: Regex patterns that should be filtered out
+
+### File Exclusions
+
+Configure patterns to exclude files and directories from scanning:
+
+- **excludes**: List of regular expressions for file paths to skip
+  - Useful for excluding test files, demo code, and fixtures
+  - Patterns are applied to the full file path relative to the repository root
+  - Examples: `.*_test\.go$` (Go tests), `^test/` (test directory), `/fixtures/` (fixtures)
 
 ## Output
 

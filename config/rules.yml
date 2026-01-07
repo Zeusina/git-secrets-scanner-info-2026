@@ -37,5 +37,19 @@ false_positives:
     - example_token
     - demo_
     - sample_
+    - AKIAIOSFODNN7EXAMPLE  # Readme example key
   patterns:
     - 'example|placeholder|sample|test'
+
+# Exclude patterns - paths matching these regex patterns will be skipped
+excludes:
+  - '.*_test\.go$'
+  - '.*_test\..*$'
+  - '^test/'      
+  - '/test/'      
+  - '^test_.*/'   
+  - '/fixtures/'  
+  - '/testdata/'  
+  - '\.test\.'    
+  - '/demo/'      
+  - '/examples?/' 
