@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"time"
 
@@ -66,7 +67,7 @@ func main() {
 func runScan(cmd *cobra.Command, args []string) error {
 	// Set logging level
 	if verbose {
-		logger.SetLevel(0) // Debug level
+		logger.SetLevel(slog.LevelDebug)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
@@ -137,17 +138,24 @@ func runScan(cmd *cobra.Command, args []string) error {
 	filesWithFindings := make(map[string]bool)
 
 	// Scan each commit
+commitLoop:
 	for _, commit := range commits {
 		select {
 		case <-ctx.Done():
 			result.AddError(ctx.Err())
-			break
+			break commitLoop
 		default:
 		}
 
 		affectedFiles, err := gitRepo.GetAffectedFiles(ctx, commit.Hash)
 		if err != nil {
-			logger.Warn(ctx, "Failed to get affected files", "commit", commit.Hash[:8], "error", err)
+			commitHash := commit.Hash
+
+			if len(commit.Hash) > 8 { // Explicit check for commit hash len
+				commitHash = commitHash[:8]
+			}
+
+			logger.Warn(ctx, "Failed to get affected files", "commit", commitHash, "error", err)
 			result.AddError(err)
 			continue
 		}
