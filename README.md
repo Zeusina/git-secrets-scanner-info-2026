@@ -28,10 +28,10 @@ A powerful command-line utility for scanning Git repositories to detect and iden
 git clone https://github.com/example/git-secrets-scanner.git
 cd git-secrets-scanner
 
-# Build the binary(Linux/MacOS)
+# Build the binary (Linux/MacOS)
 go build -o bin/gss ./cmd/gss
 
-# Build the binary(Linux/MacOS)
+# Build the binary (Windows)
 go build -o bin/gss.exe ./cmd/gss
 
 # The binary will be at ./bin/gss.exe (Windows) or ./bin/gss (Linux/macOS)
