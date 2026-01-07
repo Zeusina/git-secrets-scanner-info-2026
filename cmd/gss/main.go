@@ -66,6 +66,7 @@ func main() {
 
 func runScan(cmd *cobra.Command, args []string) error {
 	// Set logging level
+	logger.SetLevel(slog.LevelError)
 	if verbose {
 		logger.SetLevel(slog.LevelDebug)
 	}
