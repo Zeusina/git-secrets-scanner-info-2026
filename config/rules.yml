@@ -1,0 +1,41 @@
+rules:
+  - name: "Access Key"
+    pattern: 'AKIA[0-9A-Z]{16}'
+    keywords:
+      - aws
+      - access_key
+    priority: critical
+    min_length: 20
+
+  - name: "Generic API Key"
+    pattern: 'api[_-]?key\s*[:=]\s*[a-zA-Z0-9_-]{32,}'
+    keywords:
+      - api_key
+      - token
+    priority: high
+    min_length: 32
+
+  - name: "Database URL"
+    pattern: '(postgres|mysql|mongodb)://[a-zA-Z0-9_]+:[a-zA-Z0-9_\-@]+@[\w\-.]+'
+    keywords:
+      - database
+      - db_url
+    priority: high
+    min_length: 20
+
+  - name: "Private SSH Key"
+    pattern: 'BEGIN (RSA|DSA|EC|OPENSSL|PRIVATE) PRIVATE KEY'
+    keywords:
+      - private_key
+      - key
+    priority: critical
+    min_length: 50
+
+false_positives:
+  keywords:
+    - YOUR_API_KEY_HERE
+    - example_token
+    - demo_
+    - sample_
+  patterns:
+    - 'example|placeholder|sample|test'
