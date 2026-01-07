@@ -16,6 +16,7 @@ type SecretDetector struct {
 	cfg            *config.Config
 	compiledRules  map[string]*CompiledDetectorRule
 	falsePositives []*regexp.Regexp
+	excludePatterns []*regexp.Regexp
 }
 
 // CompiledDetectorRule represents a rule with a compiled regex pattern.
@@ -57,6 +58,15 @@ func NewSecretDetector(cfg *config.Config) (*SecretDetector, error) {
 		sd.falsePositives = append(sd.falsePositives, re)
 	}
 
+	// Pre-compile exclude patterns
+	for _, pattern := range cfg.Excludes {
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compile exclude pattern %q: %w", pattern, err)
+		}
+		sd.excludePatterns = append(sd.excludePatterns, re)
+	}
+
 	return sd, nil
 }
 
@@ -73,6 +83,11 @@ func (sd *SecretDetector) ScanContent(
 	case <-ctx.Done():
 		return nil
 	default:
+	}
+
+	// Check if file should be excluded
+	if sd.isExcluded(filePath) {
+		return nil
 	}
 
 	var findings []Finding
@@ -153,6 +168,19 @@ func (sd *SecretDetector) createFinding(
 		Severity:      severity,
 		Timestamp:     time.Now(),
 	}
+}
+
+// isExcluded checks if a file path should be excluded from scanning.
+func (sd *SecretDetector) isExcluded(filePath string) bool {
+	// Normalize path separators for consistent matching
+	normalizedPath := strings.ReplaceAll(filePath, "\\", "/")
+	
+	for _, pattern := range sd.excludePatterns {
+		if pattern.MatchString(normalizedPath) {
+			return true
+		}
+	}
+	return false
 }
 
 // shouldFilterOut checks if a finding should be filtered out.

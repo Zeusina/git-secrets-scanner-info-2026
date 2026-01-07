@@ -27,6 +27,7 @@ type FalsePositives struct {
 type Config struct {
 	Rules          []Rule         `yaml:"rules"`
 	FalsePositives FalsePositives `yaml:"false_positives"`
+	Excludes       []string       `yaml:"excludes"`
 	parsedPatterns map[string]*CompiledRule
 }
 
