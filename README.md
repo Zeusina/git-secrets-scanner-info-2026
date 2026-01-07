@@ -25,7 +25,7 @@ A powerful command-line utility for scanning Git repositories to detect and iden
 
 ```bash
 # Clone the repository
-git clone https://github.com/example/git-secrets-scanner.git
+git clone https://github.com/Zeusina/git-secrets-scanner-info-2026.git
 cd git-secrets-scanner
 
 # Build the binary (Linux/MacOS)

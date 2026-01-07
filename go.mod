@@ -1,4 +1,4 @@
-module github.com/example/git-secrets-scanner
+module github.com/Zeusina/git-secrets-scanner-info-2026
 
 go 1.21
 

@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/example/git-secrets-scanner/internal/analyzer"
-	"github.com/example/git-secrets-scanner/internal/config"
-	gitscan "github.com/example/git-secrets-scanner/internal/git"
+	"github.com/Zeusina/git-secrets-scanner-info-2026/internal/analyzer"
+	"github.com/Zeusina/git-secrets-scanner-info-2026/internal/config"
+	gitscan "github.com/Zeusina/git-secrets-scanner-info-2026/internal/git"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/stretchr/testify/assert"

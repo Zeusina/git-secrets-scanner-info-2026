@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/example/git-secrets-scanner/internal/analyzer"
+	"github.com/Zeusina/git-secrets-scanner-info-2026/internal/analyzer"
 )
 
 // TextReporter generates human-readable text reports.

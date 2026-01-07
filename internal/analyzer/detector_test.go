@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/example/git-secrets-scanner/internal/config"
+	"github.com/Zeusina/git-secrets-scanner-info-2026/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

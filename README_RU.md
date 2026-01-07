@@ -25,7 +25,7 @@
 
 ```bash
 # Клонировать репозиторий
-git clone https://github.com/example/git-secrets-scanner.git
+git clone https://github.com/Zeusina/git-secrets-scanner-info-2026.git
 cd git-secrets-scanner
 
 # Собрать бинарный файл (Linux/MacOS)

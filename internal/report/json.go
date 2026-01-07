@@ -4,7 +4,7 @@ package report
 import (
 	"encoding/json"
 
-	"github.com/example/git-secrets-scanner/internal/analyzer"
+	"github.com/Zeusina/git-secrets-scanner-info-2026/internal/analyzer"
 )
 
 // JSONReporter generates machine-readable JSON reports.

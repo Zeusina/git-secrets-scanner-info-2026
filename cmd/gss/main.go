@@ -7,11 +7,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/example/git-secrets-scanner/internal/analyzer"
-	"github.com/example/git-secrets-scanner/internal/config"
-	"github.com/example/git-secrets-scanner/internal/git"
-	"github.com/example/git-secrets-scanner/internal/logger"
-	"github.com/example/git-secrets-scanner/internal/report"
+	"github.com/Zeusina/git-secrets-scanner-info-2026/internal/analyzer"
+	"github.com/Zeusina/git-secrets-scanner-info-2026/internal/config"
+	"github.com/Zeusina/git-secrets-scanner-info-2026/internal/git"
+	"github.com/Zeusina/git-secrets-scanner-info-2026/internal/logger"
+	"github.com/Zeusina/git-secrets-scanner-info-2026/internal/report"
 	"github.com/spf13/cobra"
 )
 

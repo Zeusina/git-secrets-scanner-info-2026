@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/example/git-secrets-scanner/internal/config"
+	"github.com/Zeusina/git-secrets-scanner-info-2026/internal/config"
 )
 
 // SecretDetector scans content for secrets using configured rules.
