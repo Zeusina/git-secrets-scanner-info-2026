@@ -145,9 +145,10 @@ func (sd *SecretDetector) createFinding(
 	line string,
 	match []int,
 ) Finding {
-	// Extract matched text, prefer first capture group if present
+	// Extract matched text.
+	// If regex has exactly one capture group, use it as the secret value else keep full match
 	matchedText := line[match[0]:match[1]]
-	if len(match) >= 4 && match[2] != -1 {
+	if len(match) == 4 && match[2] != -1 {
 		matchedText = line[match[2]:match[3]]
 	}
 
