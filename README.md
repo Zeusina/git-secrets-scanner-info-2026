@@ -9,6 +9,8 @@ A powerful command-line utility for scanning Git repositories to detect and iden
 - **Comprehensive Secret Detection**: Uses configurable rules and regex patterns to identify various types of secrets
 - **Flexible Scanning Modes**: Scan entire history, last N commits, or specific branches
 - **Configurable Rules**: YAML-based configuration for custom detection rules
+- **Optional Secret Validation**: Validate detected secrets as active, inactive, or error using HTTP requests or commands
+- **Validation-based Filtering**: Optionally hide inactive secrets and validation errors in reports
 - **False Positive Filtering**: Built-in filters to reduce false positives
 - **Multiple Output Formats**: Generate human-readable text or machine-readable JSON reports
 - **Clean Architecture**: Modular, testable, and maintainable codebase
@@ -112,6 +114,17 @@ rules:
       - "token"
     priority: "high"
     min_length: 32
+    validation:
+      enabled: true
+      timeout: "5s"
+      retries: 2
+      retry_delay: "1s"
+      http:
+        url: "https://api.example.com/validate?key={{secret}}"
+        method: "GET"
+        headers:
+          Authorization: "Bearer {{secret}}"
+        expected_status: 200
 
 false_positives:
   keywords:
@@ -126,6 +139,9 @@ excludes:
   - '/fixtures/'
   - '/testdata/'
   - '/demo/'
+
+hide_inactive_secrets: false
+hide_validation_errors: false
 ```
 
 ### Rule Fields
@@ -135,6 +151,11 @@ excludes:
 - **keywords**: Context keywords used to narrow matches
 - **priority**: Severity level (low, medium, high, critical)
 - **min_length**: Minimum length of matched secret
+- **validation**: Optional validation configuration for checking whether the secret is active
+  - **enabled**: Enable validation for this rule
+  - **timeout / retries / retry_delay**: Validation execution controls
+  - **http**: Validate with HTTP request (`url`, `method`, `headers`, `body`, `expected_status`)
+  - **command**: Validate with command execution (`command`, `args`, `expected_exit`, `inactive_exit_codes`, `expected_output`)
 
 ### False Positives
 
@@ -151,6 +172,8 @@ Configure patterns to exclude files and directories from scanning:
   - Useful for excluding test files, demo code, and fixtures
   - Patterns are applied to the full file path relative to the repository root
   - Examples: `.*_test\.go$` (Go tests), `^test/` (test directory), `/fixtures/` (fixtures)
+- **hide_inactive_secrets**: If `true`, findings with `validation_status=inactive` are omitted from reports
+- **hide_validation_errors**: If `true`, findings with `validation_status=error` are omitted from reports
 
 ## Output
 
@@ -171,8 +194,15 @@ Scan duration:          2.345s
 
 FINDINGS BY TYPE
 ---
-  AWS Access Key                           : 2
+  Access Key                               : 2
   Database URL                             : 3
+
+VALIDATION SUMMARY
+---
+  Total validated:       5
+  Active secrets:        3
+  Inactive secrets:      1
+  Validation errors:     1
 
 DETAILED FINDINGS
 
@@ -183,6 +213,9 @@ DETAILED FINDINGS
     Severity:   critical
     Value:      AK**...***
     Line:       access_key = "AKIAIOSFODNN7EXAMPLE"
+    Validation: active
+    HTTP Code:  200
+    Response:   124ms
 ```
 
 ### JSON Report Format
@@ -195,19 +228,30 @@ DETAILED FINDINGS
     "files_with_findings": 3,
     "findings_count": 5,
     "findings_by_type": {
-      "AWS Access Key": 2,
+      "Access Key": 2,
       "Database URL": 3
     },
+    "validated_count": 5,
+    "active_secrets_count": 3,
+    "inactive_secrets_count": 1,
+    "validation_errors_count": 1,
     "scan_duration": "2.345s"
   },
   "findings": [
     {
-      "type": "AWS Access Key",
+      "type": "Access Key",
       "file_path": "config/settings.py",
       "line_number": 45,
       "commit_hash": "a1b2c3d4...",
       "severity": "critical",
-      "masked_value": "AK**...***"
+      "masked_value": "AK**...***",
+      "validation_status": "active",
+      "validation_details": {
+        "status": "active",
+        "timestamp": "2026-03-11T12:10:00Z",
+        "http_status": 200,
+        "response_time_ms": 124
+      }
     }
   ],
   "errors": []
@@ -253,6 +297,7 @@ go clean
 
 - Secrets are masked in output reports (only first and last 2 characters shown)
 - No secrets are logged to stdout (only in reports)
+- Secret validation supports timeouts and retries to reduce flaky checks
 - Configurable false positive filters to avoid unnecessary alerts
 - Support for custom ignore patterns similar to `.gitignore`
 
