@@ -109,7 +109,6 @@ func (tr *TextReporter) GenerateReport(result *analyzer.ScanResult) (string, err
 			sb.WriteString(fmt.Sprintf("    Commit:     %s (%s)\n", commitHash, finding.CommitAuthor))
 			sb.WriteString(fmt.Sprintf("    Message:    %s\n", strings.TrimSpace(finding.CommitMessage)))
 			sb.WriteString(fmt.Sprintf("    Severity:   %s\n", finding.Severity))
-			sb.WriteString(fmt.Sprintf("    Confidence: %d%%\n", finding.Confidence))
 			sb.WriteString(fmt.Sprintf("    Value:      %s\n", finding.MaskedValue))
 			sb.WriteString(fmt.Sprintf("    Line:       %s\n", tr.maskLineContent(finding)))
 

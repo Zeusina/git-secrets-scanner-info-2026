@@ -156,7 +156,6 @@ func (sd *SecretDetector) createFinding(
 	maskedValue := sd.maskValue(matchedText)
 
 	severity := sd.priorityToSeverity(rule.Priority)
-	confidence := sd.calculateConfidence(line, matchedText, rule.Keywords)
 
 	return Finding{
 		Type:          rule.Name,
@@ -169,7 +168,6 @@ func (sd *SecretDetector) createFinding(
 		LineContent:   line,
 		Value:         matchedText,
 		MaskedValue:   maskedValue,
-		Confidence:    confidence,
 		Severity:      severity,
 		Timestamp:     time.Now(),
 	}
@@ -214,31 +212,6 @@ func (sd *SecretDetector) maskValue(value string) string {
 	}
 
 	return value[:2] + strings.Repeat("*", len(value)-4) + value[len(value)-2:]
-}
-
-// calculateConfidence calculates the confidence level of a finding.
-func (sd *SecretDetector) calculateConfidence(line string, matched string, keywords []string) int {
-	confidence := 50 // Base confidence
-
-	// Increase confidence if keywords are present
-	lowerLine := strings.ToLower(line)
-	for _, keyword := range keywords {
-		if strings.Contains(lowerLine, strings.ToLower(keyword)) {
-			confidence += 20
-		}
-	}
-
-	// Increase confidence for high entropy patterns
-	if len(matched) >= 32 {
-		confidence += 15
-	}
-
-	// Cap at 100
-	if confidence > 100 {
-		confidence = 100
-	}
-
-	return confidence
 }
 
 // priorityToSeverity converts priority string to Severity.

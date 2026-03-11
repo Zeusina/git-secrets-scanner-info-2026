@@ -36,7 +36,6 @@ type Finding struct {
 	LineContent       string             `json:"line_content"`
 	Value             string             `json:"value"`
 	MaskedValue       string             `json:"masked_value"`
-	Confidence        int                `json:"confidence"` // 0-100
 	Severity          Severity           `json:"severity"`
 	Timestamp         time.Time          `json:"timestamp"`
 	ValidationStatus  string             `json:"validation_status"`            // not_validated, active, inactive, error

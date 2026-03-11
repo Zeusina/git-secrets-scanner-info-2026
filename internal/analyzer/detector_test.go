@@ -115,10 +115,9 @@ func TestScanResultAddFinding(t *testing.T) {
 	result := &ScanResult{}
 
 	finding := Finding{
-		Type:       "Test Type",
-		FilePath:   "test.py",
-		Severity:   SeverityHigh,
-		Confidence: 90,
+		Type:     "Test Type",
+		FilePath: "test.py",
+		Severity: SeverityHigh,
 	}
 
 	result.AddFinding(finding)

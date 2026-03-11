@@ -132,7 +132,7 @@ excludes:
 
 - **name**: Human-readable name of the rule
 - **pattern**: Regular expression pattern to match secrets
-- **keywords**: List of keywords to boost detection confidence
+- **keywords**: Context keywords used to narrow matches
 - **priority**: Severity level (low, medium, high, critical)
 - **min_length**: Minimum length of matched secret
 
@@ -181,7 +181,6 @@ DETAILED FINDINGS
     Commit:     a1b2c3d4 (John Doe)
     Message:    Add configuration
     Severity:   critical
-    Confidence: 95%
     Value:      AK**...***
     Line:       access_key = "AKIAIOSFODNN7EXAMPLE"
 ```
@@ -208,7 +207,6 @@ DETAILED FINDINGS
       "line_number": 45,
       "commit_hash": "a1b2c3d4...",
       "severity": "critical",
-      "confidence": 95,
       "masked_value": "AK**...***"
     }
   ],
