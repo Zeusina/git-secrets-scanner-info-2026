@@ -67,6 +67,17 @@ func (tr *TextReporter) GenerateReport(result *analyzer.ScanResult) (string, err
 		sb.WriteString("\n")
 	}
 
+	// Validation summary
+	if result.Statistics.ValidatedCount > 0 {
+		sb.WriteString("VALIDATION SUMMARY\n")
+		sb.WriteString("-" + strings.Repeat("-", 76) + "\n")
+		sb.WriteString(fmt.Sprintf("  Total validated:       %d\n", result.Statistics.ValidatedCount))
+		sb.WriteString(fmt.Sprintf("  Active secrets:        %d\n", result.Statistics.ActiveSecretsCount))
+		sb.WriteString(fmt.Sprintf("  Inactive secrets:      %d\n", result.Statistics.InactiveSecretsCount))
+		sb.WriteString(fmt.Sprintf("  Validation errors:     %d\n", result.Statistics.ValidationErrorsCount))
+		sb.WriteString("\n")
+	}
+
 	// Detailed findings
 	if len(result.Findings) > 0 {
 		sb.WriteString("DETAILED FINDINGS\n")
@@ -101,6 +112,22 @@ func (tr *TextReporter) GenerateReport(result *analyzer.ScanResult) (string, err
 			sb.WriteString(fmt.Sprintf("    Confidence: %d%%\n", finding.Confidence))
 			sb.WriteString(fmt.Sprintf("    Value:      %s\n", finding.MaskedValue))
 			sb.WriteString(fmt.Sprintf("    Line:       %s\n", tr.maskLineContent(finding)))
+
+			// Print validation status if validation run for this rule
+			if finding.ValidationStatus != "" && finding.ValidationStatus != "not_validated" {
+				sb.WriteString(fmt.Sprintf("    Validation: %s\n", finding.ValidationStatus))
+				if finding.ValidationDetails != nil {
+					if finding.ValidationDetails.ErrorMessage != "" {
+						sb.WriteString(fmt.Sprintf("    Error:      %s\n", finding.ValidationDetails.ErrorMessage))
+					}
+					if finding.ValidationDetails.HTTPStatus > 0 {
+						sb.WriteString(fmt.Sprintf("    HTTP Code:  %d\n", finding.ValidationDetails.HTTPStatus))
+					}
+					if finding.ValidationDetails.ResponseTime > 0 {
+						sb.WriteString(fmt.Sprintf("    Response:   %dms\n", finding.ValidationDetails.ResponseTime))
+					}
+				}
+			}
 		}
 		sb.WriteString("\n")
 	}
@@ -131,17 +158,10 @@ func (tr *TextReporter) GenerateReport(result *analyzer.ScanResult) (string, err
 func (tr *TextReporter) maskLineContent(finding analyzer.Finding) string {
 	line := strings.TrimSpace(finding.LineContent)
 
-	// Use the masked value to replace in line
-	// We need to find what was actually matched and replace it
-	// Since we don't have the exact matched text, we'll use MaskedValue as indicator
-	// and replace any long alphanumeric sequences with masked version
-
-	// Simple approach: replace the unmasked part with asterisks
-	// The MaskedValue shows first 2 and last 2 chars, so we can infer length
 	masked := finding.MaskedValue
 	maskedLen := len(masked)
 	if maskedLen < 4 {
-		return "[REDACTED]" // Not enough indo to locate secret
+		return "[REDACTED]" // Not enough info to locate secret
 	}
 
 	// Get prefix and suffix to display them in report
@@ -172,7 +192,7 @@ func (tr *TextReporter) maskLineContent(finding analyzer.Finding) string {
 		// Ensure we have at least 4 chars in the candidate
 		if secretEnd-secretStart >= 4 {
 			// Replace secret in candidate with masking value
-			return line[:secretStart] + masked + line[:secretEnd]
+			return line[:secretStart] + masked + line[secretEnd:]
 		}
 
 		start = secretStart + 1 // Move forward

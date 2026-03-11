@@ -1,12 +1,4 @@
 rules:
-  - name: "Access Key"
-    pattern: 'AKIA[0-9A-Z]{16}'
-    keywords:
-      - aws
-      - access_key
-    priority: critical
-    min_length: 20
-
   - name: "Generic API Key"
     pattern: 'api[_-]?key\s*[:=]\s*[a-zA-Z0-9_-]{32,}'
     keywords:
@@ -14,6 +6,19 @@ rules:
       - token
     priority: high
     min_length: 32
+    # Example validation configuration - uncomment to enable
+    # This would validate that the API key is still active by making a request
+    # validation:
+    #   enabled: true
+    #   timeout: "5s"
+    #   retries: 2
+    #   retry_delay: "1s"
+    #   http:
+    #     url: "https://api.example.com/validate?key={{secret}}"
+    #     method: "GET"
+    #     headers:
+    #       Authorization: "Bearer {{secret}}"
+    #     expected_status: 200
 
   - name: "Database URL"
     pattern: '(postgres|mysql|mongodb)://[a-zA-Z0-9_]+:[a-zA-Z0-9_\-@]+@[\w\-.]+'
@@ -22,6 +27,20 @@ rules:
       - db_url
     priority: high
     min_length: 20
+    # Example validation configuration using a command
+    # This would attempt to connect to the database URL to verify it's valid
+    validation:
+      enabled: true
+      timeout: "5s"
+      retries: 1
+      retry_delay: "2s"
+      command:
+        command: "psql"
+        args:
+          - "{{secret}}"
+        expected_exit: 0
+        # Optional: exit codes that mean "secret is invalid/inactive" cuz different utilities different codes
+        inactive_exit_codes: [2]
 
   - name: "Private SSH Key"
     pattern: 'BEGIN (RSA|DSA|EC|OPENSSL|PRIVATE) PRIVATE KEY'
@@ -37,7 +56,6 @@ false_positives:
     - example_token
     - demo_
     - sample_
-    - AKIAIOSFODNN7EXAMPLE  # Readme example key
   patterns:
     - 'example|placeholder|sample|test'
 
@@ -53,3 +71,10 @@ excludes:
   - '\.test\.'    
   - '/demo/'      
   - '/examples?/' 
+
+# Filter validation results from reports
+# hide_inactive_secrets: Hide secrets with 'inactive' validation status (not working)
+# hide_validation_errors: Hide secrets with 'error' validation status (validation failed)
+# Default: false for both (show all secrets regardless of validation status)
+hide_inactive_secrets: false
+hide_validation_errors: false 

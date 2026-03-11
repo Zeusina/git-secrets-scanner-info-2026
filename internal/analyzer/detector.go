@@ -13,9 +13,9 @@ import (
 
 // SecretDetector scans content for secrets using configured rules.
 type SecretDetector struct {
-	cfg            *config.Config
-	compiledRules  map[string]*CompiledDetectorRule
-	falsePositives []*regexp.Regexp
+	cfg             *config.Config
+	compiledRules   map[string]*CompiledDetectorRule
+	falsePositives  []*regexp.Regexp
 	excludePatterns []*regexp.Regexp
 }
 
@@ -145,8 +145,11 @@ func (sd *SecretDetector) createFinding(
 	line string,
 	match []int,
 ) Finding {
-	// Extract matched text
+	// Extract matched text, prefer first capture group if present
 	matchedText := line[match[0]:match[1]]
+	if len(match) >= 4 && match[2] != -1 {
+		matchedText = line[match[2]:match[3]]
+	}
 
 	// Create masked value (show only first and last characters)
 	maskedValue := sd.maskValue(matchedText)
@@ -163,6 +166,7 @@ func (sd *SecretDetector) createFinding(
 		CommitMessage: message,
 		LineNumber:    lineNum,
 		LineContent:   line,
+		Value:         matchedText,
 		MaskedValue:   maskedValue,
 		Confidence:    confidence,
 		Severity:      severity,
@@ -174,7 +178,7 @@ func (sd *SecretDetector) createFinding(
 func (sd *SecretDetector) isExcluded(filePath string) bool {
 	// Normalize path separators for consistent matching
 	normalizedPath := strings.ReplaceAll(filePath, "\\", "/")
-	
+
 	for _, pattern := range sd.excludePatterns {
 		if pattern.MatchString(normalizedPath) {
 			return true
