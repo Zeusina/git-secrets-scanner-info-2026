@@ -13,9 +13,9 @@ import (
 
 // SecretDetector scans content for secrets using configured rules.
 type SecretDetector struct {
-	cfg            *config.Config
-	compiledRules  map[string]*CompiledDetectorRule
-	falsePositives []*regexp.Regexp
+	cfg             *config.Config
+	compiledRules   map[string]*CompiledDetectorRule
+	falsePositives  []*regexp.Regexp
 	excludePatterns []*regexp.Regexp
 }
 
@@ -145,14 +145,17 @@ func (sd *SecretDetector) createFinding(
 	line string,
 	match []int,
 ) Finding {
-	// Extract matched text
+	// Extract matched text.
+	// If regex has exactly one capture group, use it as the secret value else keep full match
 	matchedText := line[match[0]:match[1]]
+	if len(match) == 4 && match[2] != -1 {
+		matchedText = line[match[2]:match[3]]
+	}
 
 	// Create masked value (show only first and last characters)
 	maskedValue := sd.maskValue(matchedText)
 
 	severity := sd.priorityToSeverity(rule.Priority)
-	confidence := sd.calculateConfidence(line, matchedText, rule.Keywords)
 
 	return Finding{
 		Type:          rule.Name,
@@ -163,8 +166,8 @@ func (sd *SecretDetector) createFinding(
 		CommitMessage: message,
 		LineNumber:    lineNum,
 		LineContent:   line,
+		Value:         matchedText,
 		MaskedValue:   maskedValue,
-		Confidence:    confidence,
 		Severity:      severity,
 		Timestamp:     time.Now(),
 	}
@@ -174,7 +177,7 @@ func (sd *SecretDetector) createFinding(
 func (sd *SecretDetector) isExcluded(filePath string) bool {
 	// Normalize path separators for consistent matching
 	normalizedPath := strings.ReplaceAll(filePath, "\\", "/")
-	
+
 	for _, pattern := range sd.excludePatterns {
 		if pattern.MatchString(normalizedPath) {
 			return true
@@ -209,31 +212,6 @@ func (sd *SecretDetector) maskValue(value string) string {
 	}
 
 	return value[:2] + strings.Repeat("*", len(value)-4) + value[len(value)-2:]
-}
-
-// calculateConfidence calculates the confidence level of a finding.
-func (sd *SecretDetector) calculateConfidence(line string, matched string, keywords []string) int {
-	confidence := 50 // Base confidence
-
-	// Increase confidence if keywords are present
-	lowerLine := strings.ToLower(line)
-	for _, keyword := range keywords {
-		if strings.Contains(lowerLine, strings.ToLower(keyword)) {
-			confidence += 20
-		}
-	}
-
-	// Increase confidence for high entropy patterns
-	if len(matched) >= 32 {
-		confidence += 15
-	}
-
-	// Cap at 100
-	if confidence > 100 {
-		confidence = 100
-	}
-
-	return confidence
 }
 
 // priorityToSeverity converts priority string to Severity.

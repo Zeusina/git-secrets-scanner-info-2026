@@ -13,6 +13,7 @@ import (
 	"github.com/Zeusina/git-secrets-scanner-info-2026/internal/git"
 	"github.com/Zeusina/git-secrets-scanner-info-2026/internal/logger"
 	"github.com/Zeusina/git-secrets-scanner-info-2026/internal/report"
+	"github.com/Zeusina/git-secrets-scanner-info-2026/internal/validator"
 	"github.com/spf13/cobra"
 )
 
@@ -203,8 +204,164 @@ commitLoop:
 	result.Statistics.EndTime = time.Now()
 	result.Statistics.ScanDuration = result.Statistics.EndTime.Sub(result.Statistics.StartTime)
 
+	// Validate secrets if validation configs are present
+	validateFindings(ctx, result, cfg)
+
+	// Filter inactive secrets and/or validation errors if configured
+	if cfg.HideInactiveSecrets || cfg.HideValidationErrors {
+		filterInactiveSecrets(ctx, result, cfg.HideInactiveSecrets, cfg.HideValidationErrors)
+	}
+
 	// Generate and print report
 	return generateAndPrintReport(ctx, result, outputFormat)
+}
+
+func validateFindings(ctx context.Context, result *analyzer.ScanResult, cfg *config.Config) {
+	if len(result.Findings) == 0 {
+		return // Nothing to validate
+	}
+
+	// Check if any rule has validation config
+	hasValidationConfig := false
+	for _, rule := range cfg.Rules {
+		if rule.Validation != nil {
+			hasValidationConfig = true
+			break
+		}
+	}
+
+	if !hasValidationConfig {
+		return // No validation configured
+	}
+
+	logger.Info(ctx, "Starting validation of detected secrets", "count", len(result.Findings))
+
+	// Create validator orchestrator
+	orchestrator := validator.NewValidatorOrchestrator(5) // 5 parallel workers
+
+	// Build secret info for validation
+	secretInfos := make([]validator.SecretInfo, len(result.Findings))
+	ruleMap := make(map[string]*config.Rule)
+	for i, rule := range cfg.Rules {
+		ruleMap[rule.Name] = &cfg.Rules[i]
+	}
+
+	for i, finding := range result.Findings {
+		secretInfos[i] = validator.SecretInfo{
+			Secret:    finding.Value,
+			Type:      finding.Rule,
+			Masked:    finding.MaskedValue,
+			FilePath:  finding.FilePath,
+			RuleIndex: i,
+		}
+	}
+
+	// Run validation
+	validationResults := orchestrator.ValidateFindings(ctx, secretInfos, ruleMap)
+
+	// Update findings with validation results
+	for idx, valResult := range validationResults {
+		if idx >= 0 && idx < len(result.Findings) {
+			result.Findings[idx].ValidationStatus = string(valResult.Status)
+			result.Findings[idx].ValidationDetails = &analyzer.ValidationDetails{
+				Status:       string(valResult.Status),
+				Timestamp:    valResult.Timestamp,
+				ErrorMessage: valResult.ErrorMessage,
+				HTTPStatus:   valResult.HTTPStatus,
+				ResponseTime: valResult.ResponseTime,
+			}
+
+			// Update statistics
+			if valResult.Status != validator.ValidationStatusNotValidated {
+				result.Statistics.ValidatedCount++
+				switch valResult.Status {
+				case validator.ValidationStatusActive:
+					result.Statistics.ActiveSecretsCount++
+				case validator.ValidationStatusInactive:
+					result.Statistics.InactiveSecretsCount++
+				case validator.ValidationStatusError:
+					result.Statistics.ValidationErrorsCount++
+				}
+			}
+
+			logger.Info(ctx, "Secret validated",
+				"rule", result.Findings[idx].Rule,
+				"status", result.Findings[idx].ValidationStatus,
+				"file", result.Findings[idx].FilePath,
+			)
+		}
+	}
+
+	logger.Info(ctx, "Validation complete",
+		"total_validated", result.Statistics.ValidatedCount,
+		"active", result.Statistics.ActiveSecretsCount,
+		"inactive", result.Statistics.InactiveSecretsCount,
+		"errors", result.Statistics.ValidationErrorsCount,
+	)
+}
+
+func filterInactiveSecrets(ctx context.Context, result *analyzer.ScanResult, hideInactive, hideErrors bool) {
+	// Filter out findings based on validation status
+	filteredFindings := make([]analyzer.Finding, 0)
+	removedCount := 0
+	removedByType := make(map[string]int)
+	removedBySeverity := make(map[analyzer.Severity]int)
+
+	for _, finding := range result.Findings {
+		shouldFilter := false
+
+		// Check if this finding should be filtered based on validation status
+		if hideInactive && finding.ValidationStatus == "inactive" {
+			shouldFilter = true
+		}
+		if hideErrors && finding.ValidationStatus == "error" {
+			shouldFilter = true
+		}
+
+		if shouldFilter {
+			// Track removed findings
+			removedCount++
+			removedByType[finding.Type]++
+			removedBySeverity[finding.Severity]++
+
+			logger.Debug(ctx, "Filtering out secret",
+				"rule", finding.Rule,
+				"status", finding.ValidationStatus,
+				"file", finding.FilePath,
+			)
+		} else {
+			filteredFindings = append(filteredFindings, finding)
+		}
+	}
+
+	if removedCount > 0 {
+		// Update findings list
+		result.Findings = filteredFindings
+
+		// Update statistics
+		result.Statistics.FindingsCount = len(filteredFindings)
+
+		for typ, count := range removedByType {
+			result.Statistics.FindingsByType[typ] -= count
+			if result.Statistics.FindingsByType[typ] <= 0 {
+				delete(result.Statistics.FindingsByType, typ)
+			}
+		}
+
+		for sev, count := range removedBySeverity {
+			result.Statistics.FindingsBySeverity[sev] -= count
+			if result.Statistics.FindingsBySeverity[sev] <= 0 {
+				delete(result.Statistics.FindingsBySeverity, sev)
+			}
+		}
+
+		logger.Info(ctx, "Filtered secrets based on validation status",
+			"removed_count", removedCount,
+			"remaining", len(filteredFindings),
+			"hide_inactive", hideInactive,
+			"hide_errors", hideErrors,
+		)
+	}
 }
 
 func generateAndPrintReport(ctx context.Context, result *analyzer.ScanResult, format string) error {
